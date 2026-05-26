@@ -1,0 +1,37 @@
+flowchart TB
+    subgraph PE["Privacy Explorer / YAPS (parent repo [18])"]
+        YAPS["yaps schema v1.2<br/>+ base rule families<br/>(IFACE/COMP/ASSUR/GOV/SECTOR/REG)"]
+        WS["workshops/ (SQ-4 reviewer legibility)"]
+    end
+    subgraph CARD["Stepwise privacy card (JSON)"]
+        CH["stepwise_chain — 6 fields/step"]
+        RC["risk_calibration<br/>{design_ε, measured_ε, target_advantage, evidence_ref}"]
+        JC["jurisdictional_context + exposure_problem_refs"]
+    end
+    PODS["Solid 200-pod federation (CSS-deployable)<br/>per pod: consent · withdrawal · jurisdiction · participation · data ptr"]
+    subgraph A["Tier A — numpy MLP (~5 min CPU)"]
+        FLA["FedAvg + DP-SGD<br/>2-layer MLP, 150k params"]
+        ATKA["LiRA · bootstrap CI · per-class strat"]
+    end
+    subgraph B["Tier B — PyTorch CNN (~10 min MPS) [Position B]"]
+        FLB["FedAvg + DP-SGD<br/>TinyCNN, 25k conv params"]
+        SH["Shadow pool — K full FL runs on random pod subsets (parity)"]
+        ATKB["LiRA + RMIA-online · CI · per-class strat"]
+    end
+    RULES["Rule engine<br/>COMP-* · SOLID-* · RISKCAL-*"]
+    EV["Audit-trailed result records<br/>(commit, dataset SHA, config hash, seed, device)"]
+    YAPS --> CH
+    YAPS --> RULES
+    PODS --> FLA
+    PODS --> FLB
+    FLA --> ATKA
+    FLB --> SH
+    SH --> ATKB
+    ATKA --> EV
+    ATKB --> EV
+    PODS --> RULES
+    CARD --> RULES
+    RULES --> EV
+    EV -. "evidence_ref" .-> RC
+    WS -. "SQ-4" .-> CARD
+---END---
