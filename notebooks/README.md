@@ -5,9 +5,11 @@ Six notebooks plus a top-level walkthrough. All FL-native; each runnable indepen
 | Path | Study question | Headline | Tutorial wall-clock |
 |---|---|---|---|
 | [`00_walkthrough.ipynb`](00_walkthrough.ipynb) | orientation | inspect data, pods, card, battery | < 10 s |
-| [`sq1-calibration/01_mia_per_record_sweep.ipynb`](sq1-calibration/01_mia_per_record_sweep.ipynb) | SQ-1 (MIA) | worst-record TPR @ FPR=10⁻³ against FL-released model | ~ 60 s |
-| [`sq1-calibration/02_gradient_inversion.ipynb`](sq1-calibration/02_gradient_inversion.ipynb) | SQ-1 (gradient inversion) | reconstruction PSNR vs σ | ~ 60–120 s |
-| [`sq2-metadata/01_per_subject_fidelity.ipynb`](sq2-metadata/01_per_subject_fidelity.ipynb) | SQ-2 | 0 false inclusions / exclusions over 200-pod federation | ~ 1 s |
+| [`sq1-calibration/01_mia_per_record_sweep.ipynb`](sq1-calibration/01_mia_per_record_sweep.ipynb) | SQ-1a (MIA, Tier A) | worst-record TPR @ FPR=10⁻³ against numpy MLP target; LiRA + simplified RMIA; bootstrap CI + per-class stratification | ~ 45 s |
+| [`sq1-calibration/02_gradient_inversion.ipynb`](sq1-calibration/02_gradient_inversion.ipynb) | SQ-1b (gradient inversion) | reconstruction PSNR vs σ | ~ 60–120 s |
+| [`sq1-calibration/03_canary_audit.ipynb`](sq1-calibration/03_canary_audit.ipynb) | SQ-1c (canary audit) | empirical ε lower bound via held-out canaries (Jagielski 2020 / Nasr 2023) | ~ 2–3 min |
+| [`sq1-calibration/04_sota_calibration.ipynb`](sq1-calibration/04_sota_calibration.ipynb) | **SQ-1d (Position B baseline)** | CNN target + parity-shadow LiRA + RMIA-online with CIs and per-class stratification | ~ 3.5 min on MPS |
+| [`sq2-metadata/01_per_subject_fidelity.ipynb`](sq2-metadata/01_per_subject_fidelity.ipynb) | SQ-2 | rule engine ↔ pod-generator self-consistency over 200 pods (see [METHODOLOGY §1](../docs/METHODOLOGY.md#sq-2--per-subject-metadata-fidelity) for what this does and does not show) | ~ 1 s |
 | [`sq3-composability/01_rule_battery.ipynb`](sq3-composability/01_rule_battery.ipynb) | SQ-3 | per-rule TPR + TNR vs **hand-authored** expectations | < 1 s |
 | [`sq5-comparison/01_scalar_vs_stepwise.ipynb`](sq5-comparison/01_scalar_vs_stepwise.ipynb) | SQ-5 | does the scalar (ε) ordering match the empirical TPR ordering? | ~ 1–2 min |
 

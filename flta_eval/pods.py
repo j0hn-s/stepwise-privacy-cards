@@ -3,7 +3,7 @@
 Each pod represents one *data subject* — one FL participant contributing
 a slice of training data. Per-pod resources mirror the five Solid-pod
 resource classes that the paper claims as the substrate for per-subject
-metadata (SCHEMAS.md §2). The classes are FL-native; provenance graphs
+metadata (docs/SCHEMAS.md §2). The classes are FL-native; provenance graphs
 (PROV-O) are not used in this evaluation (provenance is a broader topic
 than this short paper covers — see paper §VI).
 
@@ -248,7 +248,7 @@ def _negative_pod(
         not_after = issued + timedelta(days=365)
         pod.consent.issued = _iso(issued)
         pod.consent.not_after = _iso(not_after)
-        pod.expected_firings = ["SOLID-CONSENT-001"]
+        pod.expected_firings = ["SOLID-CONSENT-EXPIRED"]
     elif failure_mode == "withdrawn":
         pod.withdrawal.entries = [{
             "withdrawn_at": _iso(now - timedelta(days=int(rng.integers(1, 60)))),
@@ -258,7 +258,7 @@ def _negative_pod(
     elif failure_mode == "bad_signature":
         pod.consent.signature_valid = False
         pod.consent.signature = f"sig:{subject_id}:invalid"
-        pod.expected_firings = ["SOLID-CONSENT-002"]
+        pod.expected_firings = ["SOLID-CONSENT-SIGNATURE"]
     elif failure_mode == "lifecycle_violation":
         # Withdrawal recorded, but participation log shows a *later* round.
         withdrawal_at = now - timedelta(days=30)
@@ -278,7 +278,7 @@ def _negative_pod(
         pod.expected_firings = ["SOLID-JURIS-001"]
     elif failure_mode == "controller_mismatch":
         pod.consent.controller = "https://federation.example/controller/other-study"
-        pod.expected_firings = ["SOLID-CONSENT-001"]
+        pod.expected_firings = ["SOLID-CONSENT-CONTROLLER"]
     else:
         raise ValueError(f"unknown failure_mode: {failure_mode}")
     return pod

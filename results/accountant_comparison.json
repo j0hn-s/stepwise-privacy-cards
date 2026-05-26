@@ -1,0 +1,53 @@
+{
+  "delta": 1e-05,
+  "configurations": [
+    {
+      "label": "Chain main (SQ-1)",
+      "sigma": 1.1,
+      "n_rounds": 20,
+      "sample_rate": 1.0,
+      "delta": 1e-05,
+      "rdp_envelope_epsilon": 44.57077670463965,
+      "prv_epsilon_lower": 24.911628886104715,
+      "prv_epsilon_estimate": 24.922546248789345,
+      "prv_epsilon_upper": 24.933464484854053,
+      "tightness_ratio_rdp_over_prv": 1.7883717120920077
+    },
+    {
+      "label": "SQ-5 Loose",
+      "sigma": 0.3,
+      "n_rounds": 15,
+      "sample_rate": 1.0,
+      "delta": 1e-05,
+      "rdp_envelope_epsilon": 273.0258509299405,
+      "prv_epsilon_lower": 137.5168163203947,
+      "prv_epsilon_estimate": 137.52970330456574,
+      "prv_epsilon_upper": 137.54259303349258,
+      "tightness_ratio_rdp_over_prv": 1.9852136983478572
+    },
+    {
+      "label": "SQ-5 Default",
+      "sigma": 1.1,
+      "n_rounds": 15,
+      "sample_rate": 1.0,
+      "delta": 1e-05,
+      "rdp_envelope_epsilon": 36.306313894722294,
+      "prv_epsilon_lower": 20.551466845470813,
+      "prv_epsilon_estimate": 20.562263003254664,
+      "prv_epsilon_upper": 20.57305988598653,
+      "tightness_ratio_rdp_over_prv": 1.765676953406131
+    },
+    {
+      "label": "SQ-5 Tight",
+      "sigma": 2.5,
+      "n_rounds": 15,
+      "sample_rate": 1.0,
+      "delta": 1e-05,
+      "rdp_envelope_epsilon": 12.956462732485114,
+      "prv_epsilon_lower": 7.319016389339274,
+      "prv_epsilon_estimate": 7.329373000375416,
+      "prv_epsilon_upper": 7.339729942327897,
+      "tightness_ratio_rdp_over_prv": 1.767745035192161
+    }
+  ]
+}

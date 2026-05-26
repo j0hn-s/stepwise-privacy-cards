@@ -59,14 +59,14 @@
          "licence": "Apache 2.0"}
       ],
       "parameters": {
-        "epsilon": 2.0,
+        "epsilon_design_target": 2.0,
         "delta": 1.0e-5,
         "noise_mechanism": "Gaussian",
         "clipping_norm": 1.0,
         "noise_multiplier": 1.1,
-        "accounting_method": "RDP (Rényi DP) [Mironov, CSF 2017]"
+        "accounting_method": "RDP (Rényi DP) [Mironov, CSF 2017]; PRV alongside [Gopi et al., NeurIPS 2021]"
       },
-      "parameter_notes": "ε=2.0 is chosen at or below the gradient-inversion threshold (ε*=4.0) pinned to Hatamizadeh et al. (CVPR 2023) and Boenisch et al. (USENIX Security 2023). Composition across 30 rounds tracked via the RDP accountant; ε is the upper bound reported by the accountant for δ=1e-5."
+      "parameter_notes": "epsilon_design_target = 2.0 is the *aspirational* DP bound chosen at or below the gradient-inversion threshold ε*=4.0 [Hatamizadeh CVPR 2023; Boenisch USENIX 2023]. It is **not** the measured ε at the configured (σ=1.1, T=20, q=1.0); see risk_calibration.measured_epsilon for the actual accountant outputs. The gap between design target and measured ε is what RISKCAL-002 surfaces and is, by design, where the chain's governance loop intervenes — either by retightening σ/T/q, reducing participation, accepting the higher residual explicitly, or moving to FL + MPC + DP-C (S-03)."
     }
   ],
 
@@ -77,7 +77,7 @@
         "actor": "honest-but-curious aggregation coordinator",
         "capability": "observes per-client update gradients before the TEE-internal sum",
         "mitigated_by": "TEE isolates intermediate state from the host OS; DP-C bounds released-model leakage",
-        "residual_risk": "Per-client visibility inside the TEE remains; gradient-inversion residual at ε=2.0 is bounded by the SQ-1 calibration measurement (see risk_calibration.attack_target)."
+        "residual_risk": "Per-client visibility inside the TEE remains; the gradient-inversion residual is measured (not bounded by the design ε) via the SQ-1 calibration record (see risk_calibration)."
       },
       {
         "actor": "external motivated intruder (Profile A)",
@@ -167,16 +167,23 @@
   },
 
   "risk_calibration": {
-    "mu_dp": 0.85,
+    "mu_dp_design_target": 0.85,
     "attack_target": {
       "attack": "MIA",
       "target_advantage": 0.030,
       "target_fpr": 0.001,
-      "evidence_ref": "results/sq1/mia_per_record__B__bloodmnist.json"
+      "evidence_ref": "results/sq1/mia_per_record__B-LiRA__*.json"
     },
-    "operational_interpretation": "Worst-record MIA against the FL-released model bounded at TPR=0.030 at FPR=10⁻³ for the budget-bounded intruder profile, calibrated against the SQ-1 result record in evidence_ref. The (ε=2, δ=10⁻⁵) configured DP guarantee corresponds to µ-DP ≈ 0.85 via the Gaussian-DP conversion (Dong, Roth & Su 2022).",
+    "measured_epsilon": {
+      "rdp_envelope": 44.57,
+      "prv_gopi_2021": 24.92,
+      "delta": 1.0e-5,
+      "evidence_ref": "results/accountant_comparison.json",
+      "note": "Measured at the configured (σ=1.1, T=20, q=1.0, δ=10⁻⁵). Both values are well above the design target of 2.0 and above the COMP-GRADINV-001 threshold of 4.0; the chain explicitly accepts the gradient-inversion residual in step 2 (`residual_risk`)."
+    },
+    "operational_interpretation": "Worst-record MIA against the FL-released model is *target-bounded* at TPR=0.030 at FPR=10⁻³ for the budget-bounded intruder profile. The latest paper-scale calibration (n_targets=60, n_shadow_runs=128) recorded worst-record TPR = 0.0496 — exceeding the declared target by 0.020. RISKCAL-002 fires AMBER. The governance interpretation is: either retighten σ/T/q to meet 0.030, accept the higher operational target explicitly in the chain, or move to FL + MPC + DP-C (S-03).",
     "source_library": "manual",
-    "notes": "ε=2.0 is the operational choice: at or below the gradient-inversion threshold ε*=4.0 pinned to Hatamizadeh et al. (CVPR 2023) and Boenisch et al. (USENIX Security 2023). The measured target_advantage from the SQ-1 notebook may exceed the declared 0.030 at tutorial scale — that is expected (the small-sweep worst-record max is high-variance) and would fire RISKCAL-002; paper-spec configuration (n_targets=60, n_shadow_runs=128) converges to the stable bound."
+    "notes": "The card declares an *aspirational* target_advantage = 0.030 — chosen by the deployment for operational reasons, not derived from the configured DP parameters (which would give a much weaker bound). The Dong, Roth & Su (2022) µ-DP conversion at the configured (σ=1.1, T=20) yields µ_total ≈ 4.07 via the sequential-composition rule for the Gaussian mechanism, well above 0.85 — the design-target µ_dp is not currently achieved by the configured FL settings. This honest declared-vs-measured gap is the worked example."
   },
 
   "stepwise_chain": [
@@ -208,7 +215,7 @@
       "pet_added": "DP-C",
       "trust_assumption_added": "trusted curator (the aggregator); named composition theorem (RDP)",
       "assurance_anchor": "RDP accountant log; DP parameter manifest; risk_calibration block with measured target_advantage",
-      "residual_risk": "Coordinator still observes DP-noised individual updates. accepted residual: gradient inversion residual at ε=2.0 — bounded by the gradient-inversion calibration in SQ-1 (a per-input PSNR threshold above which reconstruction is considered successful)."
+      "residual_risk": "Coordinator still observes DP-noised individual updates. accepted residual: gradient inversion at the configured (σ=1.1, T=20) — measured ε is 44.6 (RDP) / 24.9 (PRV), above the design target ε=2.0 and above COMP-GRADINV-001's ε*=4.0. The residual is accepted because the gradient-inversion empirical PSNR is below the 15 dB recognisability threshold for the σ values tested; the rule fires AMBER for surfacing."
     },
     {
       "step": 3,

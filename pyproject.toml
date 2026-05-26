@@ -11,8 +11,13 @@ requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 authors = [{ name = "John Smith" }]
 dependencies = [
-    "numpy>=1.26",
-    "scipy>=1.11",
+    # numpy and scipy are pinned for bit-for-bit reproducibility of the
+    # recorded results. See docs/ENVIRONMENT.md §3. Floating-point order of
+    # operations in BLAS dispatch varies across backends — pinning the
+    # numpy/scipy tuple is necessary but not sufficient; the BLAS backend
+    # is recorded in each result record's environment.blas field.
+    "numpy==2.4.6",
+    "scipy==1.17.1",
     "scikit-learn>=1.4",
     "pandas>=2.2",
     "pyarrow>=15",
@@ -25,6 +30,20 @@ dependencies = [
     "jupyterlab>=4.0",
     "nbconvert>=7.0",
 ]
+
+[project.optional-dependencies]
+# Tighter (ε, δ) accounting via the PRV accountant of Gopi et al.
+# (NeurIPS 2021). Used by scripts/compare_accountants.py. Not required for
+# the default evaluation. prv-accountant is a pure-Python implementation
+# that does not pull in PyTorch (unlike opacus.accountants.PRVAccountant).
+accountants = ["prv-accountant>=0.2.0"]
+
+# Position B "SOTA-faithful" baseline: PyTorch CNN target + shadow-target
+# FL parity + Opacus DP accountant. Used by flta_eval/fl_torch.py and
+# notebooks/sq1-calibration/04_sota_calibration.ipynb. Install via
+# `pip install -e ".[sota]"`. ~2 GB of wheels — opt-in only. Not required
+# for Tier A (the numpy-MLP path the default `make eval` exercises).
+sota = ["torch>=2.4", "opacus>=1.5"]
 
 [tool.setuptools.packages.find]
 include = ["flta_eval*"]

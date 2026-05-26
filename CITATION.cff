@@ -2,18 +2,18 @@ cff-version: 1.2.0
 title: "Stepwise Privacy Cards for Federated Learning"
 abstract: >
   Companion artefact to the short paper "Beyond scalar epsilon: stepwise
-  privacy cards for federated learning" (FLTA 2026). Provides an end-to-end
-  reproducible evaluation harness: a small numpy federated-learning training
-  loop on the MedMNIST v2 BloodMNIST benchmark; per-record membership
-  inference (Carlini LiRA, 2022) against the FL-released model; gradient
-  inversion (Geiping, 2020, with optional Total-Variation regularisation)
-  against per-round client updates; a 200-pod Solid federation mock with
-  optional deployment against Community Solid Server; a deterministic
-  rule engine over FLTA-specific COMP-*, SOLID-*, and RISKCAL-* rules;
-  and a 16-chain composability battery cross-checked against hand-
-  authored expectations. Companion to the privacy-explorer / YAPS
-  framework (https://github.com/j0hn-s/privacy-explorer; replace
-  with final URL when publishing).
+  privacy cards for federated learning" (FLTA 2026). End-to-end reproducible
+  evaluation harness across two tiers: Tier A (tutorial, numpy MLP, CPU, ~5
+  min end-to-end) and Tier B (SOTA-faithful baseline, PyTorch CNN + shadow-
+  target FL parity + LiRA and RMIA-online side-by-side, MPS-accelerated,
+  ~10 min on Apple Silicon). The MedMNIST v2 BloodMNIST benchmark, a
+  200-pod Solid federation mock with optional deployment against
+  Community Solid Server, a deterministic rule engine over FLTA-specific
+  COMP-*, SOLID-*, and RISKCAL-* rules, a 16-chain composability battery
+  cross-checked against hand-authored expectations, and an empirical-
+  epsilon canary audit (Jagielski 2020 / Nasr 2023). Companion to the
+  privacy-explorer / YAPS framework (https://github.com/j0hn-s/privacy-explorer;
+  replace with final URL when publishing).
 type: software
 authors:
   - family-names: Smith
@@ -24,7 +24,12 @@ keywords:
   - differential privacy
   - privacy cards
   - membership inference
+  - LiRA
+  - RMIA
+  - shadow-target parity
   - gradient inversion
+  - privacy auditing
+  - canary audit
   - Solid pods
   - operational privacy reporting
 license: Apache-2.0

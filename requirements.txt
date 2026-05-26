@@ -1,12 +1,26 @@
-numpy>=1.26
-scipy>=1.11
+# Mirrors the [project] dependencies block in pyproject.toml. Prefer
+# `pip install -e .` (or `pip install -e ".[accountants]"` for the PRV
+# accountant). This file exists for environments that cannot consume
+# PEP 621 metadata.
+numpy==2.4.6
+scipy==1.17.1
 scikit-learn>=1.4
 pandas>=2.2
 pyarrow>=15
 jupyterlab>=4.0
+nbconvert>=7.0
 matplotlib>=3.8
 rdflib>=7.0
 pyld>=2.0
 PyYAML>=6.0
 medmnist
 requests
+
+# Optional — for scripts/compare_accountants.py
+# prv-accountant>=0.2.0
+
+# Optional — for the Position B SOTA-faithful baseline
+# (PyTorch CNN + parity-shadow LiRA/RMIA, notebooks/sq1-calibration/04_sota_calibration.ipynb)
+# Install via `pip install -e ".[sota]"` or uncomment below:
+# torch>=2.4
+# opacus>=1.5

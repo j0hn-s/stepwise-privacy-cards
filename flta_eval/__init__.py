@@ -10,7 +10,7 @@ Six modules, all FL-native:
 - `rules`     : FLTA-specific rule engine (COMP-*, SOLID-*, RISKCAL-*)
 - `chains`    : the 16-chain battery for SQ-3
 
-See `PRIVACY_EXPLORER_MAP.md` for what is reused from the parent
+See `docs/PRIVACY_EXPLORER_MAP.md` for what is reused from the parent
 repository and what is net new here.
 """
 

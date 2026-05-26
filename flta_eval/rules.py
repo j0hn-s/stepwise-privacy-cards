@@ -8,10 +8,20 @@ Three rule families on top of the yaps base rules:
                  - COMP-TEEMPC-001  [Mo et al., MobiSys 2021; OLIVE 2022]
                  - COMP-JURIS-001   [ICO Anon CoP 2022; EU AI Act 2024]
 - `SOLID-*`    : per-subject metadata fidelity
-                 - SOLID-CONSENT-001, SOLID-CONSENT-002
+                 - SOLID-CONSENT-MISSING    (consent receipt absent)
+                 - SOLID-CONSENT-EXPIRED    (consent receipt not_after in the past)
+                 - SOLID-CONSENT-CONTROLLER (consent controller URI mismatch)
+                 - SOLID-CONSENT-SIGNATURE  (consent signature fails verification)
                  - SOLID-WITHDRAW-001
                  - SOLID-LIFECYCLE-001 (participation log past a withdrawal)
                  - SOLID-JURIS-001
+
+  The three CONSENT-MISSING/EXPIRED/CONTROLLER rules were previously one
+  rule (`SOLID-CONSENT-001`) and have been split because a single rule ID
+  conflated three semantically distinct findings — a reviewer reading a
+  `SOLID-CONSENT-001` finding could not tell which condition fired
+  without parsing the `detail` string. `SOLID-CONSENT-SIGNATURE` is the
+  renamed `SOLID-CONSENT-002` for naming consistency across the family.
 - `RISKCAL-*`  : operational DP reporting alongside (ε, δ)
 
 The base yaps rules are loaded separately from `yaps/rules/rules.yaml`
@@ -261,28 +271,44 @@ def _parse_iso(s: str) -> datetime | None:
         return None
 
 
-def solid_consent_001(pod: dict, card: dict, *, now: datetime) -> list[Finding]:
+def solid_consent_missing(pod: dict, **_: Any) -> list[Finding]:
     consent = pod.get("consent") or {}
     if not consent:
-        return [Finding("SOLID-CONSENT-001", "RED", "Consent receipt absent",
+        return [Finding("SOLID-CONSENT-MISSING", "RED", "Consent receipt absent",
                         f"Pod {pod.get('subject_id')} has no consent receipt.")]
-    not_after = _parse_iso(consent.get("not_after", ""))
-    if not_after is None or not_after < now:
-        return [Finding("SOLID-CONSENT-001", "RED", "Consent receipt expired",
-                        f"Pod {pod.get('subject_id')} not_after={consent.get('not_after')} "
-                        f"is in the past.")]
-    expected_controller = (card.get("regulatory_context") or {}).get("controller_uri") \
-        or "https://federation.example/controller/fl-bloodmnist-2026"
-    if consent.get("controller") != expected_controller:
-        return [Finding("SOLID-CONSENT-001", "RED", "Controller mismatch",
-                        f"Consent controller={consent.get('controller')} "
-                        f"≠ deployment controller={expected_controller}.")]
     return []
 
 
-def solid_consent_002(pod: dict, **_: Any) -> list[Finding]:
+def solid_consent_expired(pod: dict, *, now: datetime, **_: Any) -> list[Finding]:
+    consent = pod.get("consent") or {}
+    if not consent:
+        return []  # absence is handled by solid_consent_missing
+    not_after = _parse_iso(consent.get("not_after", ""))
+    if not_after is None or not_after < now:
+        return [Finding("SOLID-CONSENT-EXPIRED", "RED", "Consent receipt expired",
+                        f"Pod {pod.get('subject_id')} not_after={consent.get('not_after')} "
+                        f"is in the past relative to evaluation time {now.isoformat()}.")]
+    return []
+
+
+def solid_consent_controller(pod: dict, card: dict, **_: Any) -> list[Finding]:
+    consent = pod.get("consent") or {}
+    if not consent:
+        return []
+    expected_controller = (card.get("regulatory_context") or {}).get("controller_uri") \
+        or "https://federation.example/controller/fl-bloodmnist-2026"
+    if consent.get("controller") != expected_controller:
+        return [Finding("SOLID-CONSENT-CONTROLLER", "RED", "Controller mismatch",
+                        f"Pod {pod.get('subject_id')} consent controller="
+                        f"{consent.get('controller')} ≠ deployment controller="
+                        f"{expected_controller}.")]
+    return []
+
+
+def solid_consent_signature(pod: dict, **_: Any) -> list[Finding]:
     if not pod.get("consent_signature_valid", True):
-        return [Finding("SOLID-CONSENT-002", "AMBER", "Consent signature does not verify",
+        return [Finding("SOLID-CONSENT-SIGNATURE", "AMBER",
+                        "Consent signature does not verify",
                         f"Pod {pod.get('subject_id')} signature failed mocked "
                         "verification against subject WebID.")]
     return []
@@ -333,7 +359,8 @@ def solid_juris_001(pod: dict, **_: Any) -> list[Finding]:
 
 
 SOLID_RULES = [
-    solid_consent_001, solid_consent_002, solid_withdraw_001,
+    solid_consent_missing, solid_consent_expired, solid_consent_controller,
+    solid_consent_signature, solid_withdraw_001,
     solid_lifecycle_001, solid_juris_001,
 ]
 
@@ -365,8 +392,10 @@ def evaluate_card(card: dict, *, measured: dict | None = None,
 
 def project_residual_for_subject(card: dict, pod: dict, *, now: datetime) -> dict:
     findings: list[Finding] = []
-    findings.extend(solid_consent_001(pod, card, now=now))
-    findings.extend(solid_consent_002(pod))
+    findings.extend(solid_consent_missing(pod))
+    findings.extend(solid_consent_expired(pod, now=now))
+    findings.extend(solid_consent_controller(pod, card))
+    findings.extend(solid_consent_signature(pod))
     findings.extend(solid_withdraw_001(pod))
     findings.extend(solid_lifecycle_001(pod))
     findings.extend(solid_juris_001(pod))
