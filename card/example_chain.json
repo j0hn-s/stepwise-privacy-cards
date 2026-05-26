@@ -1,0 +1,232 @@
+{
+  "card_id": "CARD-flta-fl-bloodmnist-202605",
+  "schema_version": "1.2",
+  "title": "FLTA hypothetical: cross-device FL on BloodMNIST under FL + TEE + DP-C",
+  "description": "Hypothetical cross-device federated learning on the MedMNIST v2 BloodMNIST benchmark — 200 data subjects across the EU contributing pod-resident blood-cell-image slices to a federated classifier. Aggregation runs inside a TEE on an EU cloud region; the released model satisfies a stated central-DP bound. This card is the worked example accompanying the FLTA 2026 short paper.",
+  "created": "2026-05-25",
+  "last_updated": "2026-05-25",
+  "status": "review",
+  "authors": ["Privacy Explorer — FLTA 2026 example"],
+
+  "architecture_pattern": {
+    "stack_ref": "S-01",
+    "custom": false
+  },
+
+  "pet_components": [
+    {
+      "primitive_id": "FL",
+      "role": "Local data retention — each subject's pod hosts their imaging slice; only DP-noised model updates leave the pod.",
+      "implementation_status": "deployed",
+      "tooling": [
+        {"name": "Flower", "version": "1.10", "url": "https://flower.ai/",
+         "licence": "Apache 2.0",
+         "notes": "Reference client/server framework; the evaluation harness uses a minimal numpy FedAvg implementation for reproducibility (see flta_eval/fl.py)."}
+      ],
+      "parameters": {
+        "aggregation_strategy": "FedAvg",
+        "rounds": 30,
+        "clients_per_round": 50,
+        "min_clients_per_round": 40,
+        "client_lr": 0.05,
+        "client_batch_size": 32
+      },
+      "parameter_notes": "Cross-device FL pattern per Kairouz et al. (Foundations and Trends in ML, 2021) §3. Non-IID partition: Dirichlet(α=0.5) per Hsu et al. 2019."
+    },
+    {
+      "primitive_id": "TEE",
+      "role": "Hardware isolation of aggregation server — enclave protects intermediate model state from the cloud operator.",
+      "implementation_status": "deployed",
+      "tooling": [
+        {"name": "AWS Nitro Enclaves",
+         "url": "https://aws.amazon.com/ec2/nitro/nitro-enclaves/",
+         "licence": "proprietary"}
+      ],
+      "parameters": {
+        "vendor": "AWS Nitro Enclaves",
+        "memory_mb": 4096,
+        "side_channel_mitigations": "memory encryption enabled; no hyperthreading on enclave vCPUs"
+      },
+      "parameter_notes": "Per-round attestation; measurement pinned in change-control log."
+    },
+    {
+      "primitive_id": "DP-C",
+      "role": "Formal output disclosure bound — Gaussian mechanism applied to per-client gradients before aggregation; RDP composition across rounds.",
+      "implementation_status": "deployed",
+      "tooling": [
+        {"name": "Opacus / dp_accounting",
+         "url": "https://opacus.ai/",
+         "licence": "Apache 2.0"}
+      ],
+      "parameters": {
+        "epsilon": 2.0,
+        "delta": 1.0e-5,
+        "noise_mechanism": "Gaussian",
+        "clipping_norm": 1.0,
+        "noise_multiplier": 1.1,
+        "accounting_method": "RDP (Rényi DP) [Mironov, CSF 2017]"
+      },
+      "parameter_notes": "ε=2.0 is chosen at or below the gradient-inversion threshold (ε*=4.0) pinned to Hatamizadeh et al. (CVPR 2023) and Boenisch et al. (USENIX Security 2023). Composition across 30 rounds tracked via the RDP accountant; ε is the upper bound reported by the accountant for δ=1e-5."
+    }
+  ],
+
+  "trust_model": {
+    "summary": "Data subjects are EU residents who have authorised participation via consent receipt stored on their Solid pod. The aggregation server is operated by an EU cloud provider and is treated as honest-but-curious; the TEE isolates aggregation from the host. External analysts are untrusted. The released model is public output bounded by the declared DP guarantee.",
+    "threat_actors": [
+      {
+        "actor": "honest-but-curious aggregation coordinator",
+        "capability": "observes per-client update gradients before the TEE-internal sum",
+        "mitigated_by": "TEE isolates intermediate state from the host OS; DP-C bounds released-model leakage",
+        "residual_risk": "Per-client visibility inside the TEE remains; gradient-inversion residual at ε=2.0 is bounded by the SQ-1 calibration measurement (see risk_calibration.attack_target)."
+      },
+      {
+        "actor": "external motivated intruder (Profile A)",
+        "capability": "queries the released model; has bounded auxiliary data",
+        "mitigated_by": "DP-C guarantee plus the operational attack-rate bound in risk_calibration",
+        "residual_risk": "Worst-record MIA at FPR=10⁻³ bounded at the measured target_advantage."
+      }
+    ],
+    "out_of_scope_threats": [
+      "Adversarial federation participant attacks (Byzantine)",
+      "Hardware-side-channel attacks against the TEE",
+      "Supply-chain compromise of the FL framework or DP library"
+    ]
+  },
+
+  "assurance_targets": {
+    "required_artefacts": [
+      {"artefact": "attestation report (TEE layer)",
+       "status": "exists", "location": "internal/attestation/round_*.json"},
+      {"artefact": "RDP accountant log + DP parameter manifest",
+       "status": "exists", "location": "internal/dp/accountant_log.csv"},
+      {"artefact": "FL training protocol + per-round audit log",
+       "status": "exists", "location": "internal/protocol/fl_spec_v2.pdf"},
+      {"artefact": "per-record MIA calibration record (SQ-1)",
+       "status": "exists", "location": "results/sq1/mia_per_record__B__*.json"},
+      {"artefact": "gradient-inversion calibration record (SQ-1)",
+       "status": "exists", "location": "results/sq1/gradient_inversion__GI__*.json"},
+      {"artefact": "per-subject metadata fidelity report (SQ-2)",
+       "status": "exists", "location": "results/sq2/per_subject_fidelity__*.json"},
+      {"artefact": "composability rule-battery report (SQ-3)",
+       "status": "exists", "location": "results/sq3/rule_battery__*.json"},
+      {"artefact": "scalar-vs-stepwise comparison (SQ-5)",
+       "status": "exists", "location": "results/sq5/scalar_vs_stepwise__*.json"}
+    ],
+    "current_maturity_stage": 2,
+    "maturity_justification": "Workflow is repeatable and documented. Stage 3 requires formal release log + reviewer sign-off pathway."
+  },
+
+  "governance_controls": {
+    "output_control": "human-review",
+    "access_control": "Per-pod WAC/ACP rules; each subject grants the FL client read access to their data resource only.",
+    "change_control": "Parameter changes (ε, clipping, aggregation strategy) require change-control log entry + governance review.",
+    "audit_log": true,
+    "dpia_reference": "DPIA-FLTA-EXAMPLE-2026-001",
+    "frameworks_applied": [
+      {"framework": "EU AI Act (limited-risk transparency obligations)", "alignment_level": "partial"},
+      {"framework": "ICO PETs Guidance 2023", "alignment_level": "partial"}
+    ]
+  },
+
+  "deployment_context": {
+    "sector_ref": "healthcare",
+    "sub_sector": "federated medical-imaging classification benchmark",
+    "data_subjects_jurisdiction": ["EU"],
+    "scale": "limited-production"
+  },
+
+  "regulatory_context": {
+    "applicable_regulations": [
+      {
+        "regulation": "EU GDPR",
+        "jurisdiction": "EU",
+        "relevant_articles": ["Art. 6(1)(a) — consent", "Art. 9(2)(j) — research", "Art. 25 — data protection by design", "Art. 35 — DPIA"],
+        "alignment_status": "partial"
+      },
+      {
+        "regulation": "EU AI Act (2024/1689)",
+        "jurisdiction": "EU",
+        "alignment_status": "partial",
+        "gap_notes": "Classification depends on downstream deployment; the BloodMNIST benchmark itself sits in research scope."
+      }
+    ],
+    "standards_alignment": [
+      {"standard": "NIST SP 800-226 (draft)", "alignment_level": "partial",
+       "notes": "RDP accountant satisfies ε-tracking; per-release sensitivity analysis not yet exercised."}
+    ]
+  },
+
+  "exposure_problem_refs": ["EP-04", "EP-03", "EP-01"],
+
+  "jurisdictional_context": {
+    "data_subjects": ["EU"],
+    "controllers": ["EU"],
+    "operators": ["EU"],
+    "cross_border_mechanism": null,
+    "notes": "Coherent single-regime deployment: all participants are EU residents; controller and operator are EU. No cross-border mechanism required at this configuration. A future US-region operator step would require SCCs or adequacy and would trigger COMP-JURIS-001 until declared."
+  },
+
+  "risk_calibration": {
+    "mu_dp": 0.85,
+    "attack_target": {
+      "attack": "MIA",
+      "target_advantage": 0.030,
+      "target_fpr": 0.001,
+      "evidence_ref": "results/sq1/mia_per_record__B__bloodmnist.json"
+    },
+    "operational_interpretation": "Worst-record MIA against the FL-released model bounded at TPR=0.030 at FPR=10⁻³ for the budget-bounded intruder profile, calibrated against the SQ-1 result record in evidence_ref. The (ε=2, δ=10⁻⁵) configured DP guarantee corresponds to µ-DP ≈ 0.85 via the Gaussian-DP conversion (Dong, Roth & Su 2022).",
+    "source_library": "manual",
+    "notes": "ε=2.0 is the operational choice: at or below the gradient-inversion threshold ε*=4.0 pinned to Hatamizadeh et al. (CVPR 2023) and Boenisch et al. (USENIX Security 2023). The measured target_advantage from the SQ-1 notebook may exceed the declared 0.030 at tutorial scale — that is expected (the small-sweep worst-record max is high-variance) and would fire RISKCAL-002; paper-spec configuration (n_targets=60, n_shadow_runs=128) converges to the stable bound."
+  },
+
+  "stepwise_chain": [
+    {
+      "step": 0,
+      "name": "Baseline — completely private",
+      "purpose": "Starting state. Each data subject's imaging slice sits in their Solid pod under WAC/ACP control; no FL client has been granted read access.",
+      "exposure_problem_ref": "baseline",
+      "pet_added": "none",
+      "trust_assumption_added": "trivial — each subject trusts their own pod's access-control policy",
+      "assurance_anchor": "WAC/ACP rules on each pod; WebID-OIDC authentication",
+      "residual_risk": "Trivially private; trivially useless for federated training."
+    },
+    {
+      "step": 1,
+      "name": "Authorise FL clients to read pod-resident data",
+      "purpose": "Each subject grants the FL client read access to their data resource via a WAC/ACP rule, evidenced by a signed Consent Receipt.",
+      "exposure_problem_ref": "EP-04",
+      "pet_added": "FL",
+      "trust_assumption_added": "honest-but-curious coordinator; participating clients honour pod access-control",
+      "assurance_anchor": "FL training protocol; per-round participation log written back to each pod (participation.jsonld)",
+      "residual_risk": "Per-update gradient leakage [Geiping 2020; Zhu 2019]; coordinator observes per-client updates."
+    },
+    {
+      "step": 2,
+      "name": "Bound per-update leakage via central DP",
+      "purpose": "Address per-update leakage; bound what the released model reveals about any individual subject.",
+      "exposure_problem_ref": "EP-04",
+      "pet_added": "DP-C",
+      "trust_assumption_added": "trusted curator (the aggregator); named composition theorem (RDP)",
+      "assurance_anchor": "RDP accountant log; DP parameter manifest; risk_calibration block with measured target_advantage",
+      "residual_risk": "Coordinator still observes DP-noised individual updates. accepted residual: gradient inversion residual at ε=2.0 — bounded by the gradient-inversion calibration in SQ-1 (a per-input PSNR threshold above which reconstruction is considered successful)."
+    },
+    {
+      "step": 3,
+      "name": "Protect aggregation environment",
+      "purpose": "Aggregator runs on cloud infrastructure; protect data-in-use from the cloud operator and the host OS.",
+      "exposure_problem_ref": "EP-03",
+      "pet_added": "TEE",
+      "trust_assumption_added": "hardware-anchored trust (vendor + attestation chain)",
+      "assurance_anchor": "per-round attestation report; enclave measurement; side-channel mitigation declaration",
+      "residual_risk": "Hardware vendor compromise; Spectre-class side channels not covered by declared mitigations. accepted residual: coordinator visibility inside the enclave — closing this would require S-03 (FL + MPC + DP-C); the cost/benefit is workshop-pending."
+    }
+  ],
+
+  "change_log": [
+    {
+      "date": "2026-05-25",
+      "change": "FLTA 2026 example chain. Cross-device FL on BloodMNIST under a single EU regulatory frame. risk_calibration.attack_target populated with the operational MIA bound; gradient-inversion residual explicitly accepted with reference to the ε threshold from Hatamizadeh 2023 / Boenisch 2023.",
+      "author": "Privacy Explorer"
+    }
+  ]
+}

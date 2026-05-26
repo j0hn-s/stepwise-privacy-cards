@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stepwise-privacy-cards"
+version = "0.1.0"
+description = "Stepwise privacy cards for federated learning — companion to FLTA 2026 short paper"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "John Smith" }]
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "scikit-learn>=1.4",
+    "pandas>=2.2",
+    "pyarrow>=15",
+    "matplotlib>=3.8",
+    "rdflib>=7.0",
+    "pyld>=2.0",
+    "PyYAML>=6.0",
+    "medmnist",
+    "requests",
+    "jupyterlab>=4.0",
+    "nbconvert>=7.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["flta_eval*"]

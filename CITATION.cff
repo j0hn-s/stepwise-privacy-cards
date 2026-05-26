@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+title: "Stepwise Privacy Cards for Federated Learning"
+abstract: >
+  Companion artefact to the short paper "Beyond scalar epsilon: stepwise
+  privacy cards for federated learning" (FLTA 2026). Provides an end-to-end
+  reproducible evaluation harness: a small numpy federated-learning training
+  loop on the MedMNIST v2 BloodMNIST benchmark; per-record membership
+  inference (Carlini LiRA, 2022) against the FL-released model; gradient
+  inversion (Geiping, 2020, with optional Total-Variation regularisation)
+  against per-round client updates; a 200-pod Solid federation mock with
+  optional deployment against Community Solid Server; a deterministic
+  rule engine over FLTA-specific COMP-*, SOLID-*, and RISKCAL-* rules;
+  and a 16-chain composability battery cross-checked against hand-
+  authored expectations. Companion to the privacy-explorer / YAPS
+  framework (https://github.com/j0hn-s/privacy-explorer; replace
+  with final URL when publishing).
+type: software
+authors:
+  - family-names: Smith
+    given-names: John
+    affiliation: Newton Europe
+keywords:
+  - federated learning
+  - differential privacy
+  - privacy cards
+  - membership inference
+  - gradient inversion
+  - Solid pods
+  - operational privacy reporting
+license: Apache-2.0
+references:
+  - type: software
+    title: "Privacy Explorer: An Implementation-Centred Reference for PET Combinations, Sectoral Adoption, and Assurance Artefacts"
+    authors:
+      - family-names: Smith
+        given-names: John
+    notes: "Companion repository providing the YAPS schema, base rule engine, and stepwise-from-private methodology this work extends."

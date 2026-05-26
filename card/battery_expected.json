@@ -1,0 +1,43 @@
+{
+  "_comment": [
+    "Hand-authored expected rule firings per chain in the 16-chain battery.",
+    "Authored independently from flta_eval/chains.py so SQ-3 is a meaningful",
+    "cross-check (`expected` vs `measured`), not a tautology. Re-author by",
+    "reading each chain's pet_components, ε, and jurisdictional_context and",
+    "applying the FLTA-specific rules below from first principles:",
+    "",
+    "  COMP-SECAGG-001 — RED — FL declared, no MPC, no `accepted residual: coordinator`/`mpc`",
+    "  COMP-GRADINV-001 — AMBER — FL declared, DP-C ε > 4.0, no MPC, no `accepted residual: gradient`",
+    "  COMP-TEEMPC-001 — AMBER — TEE declared, no MPC, no `accepted residual: coordinator`/`in-enclave`",
+    "  COMP-JURIS-001 — RED — jurisdictional roles differ AND no cross_border_mechanism declared",
+    "",
+    "ε threshold (4.0) is pinned to Hatamizadeh et al. (CVPR 2023) §5 and",
+    "Boenisch et al. (USENIX Security 2023) §6.",
+    "",
+    "Re-author this file when chain definitions change. SQ-3 is meaningful",
+    "because this file is authored independently of the rule engine."
+  ],
+  "schema_version": "1.0",
+  "battery_version": 2,
+  "chains": [
+    {"chain_id": "FL__H1_default",                  "expected_firings": ["COMP-SECAGG-001"]},
+    {"chain_id": "FL__H2_gradinv_eps6",             "expected_firings": ["COMP-SECAGG-001"]},
+    {"chain_id": "FL__H3_juris_unmechanised",       "expected_firings": ["COMP-JURIS-001", "COMP-SECAGG-001"]},
+    {"chain_id": "FL__H4_well_configured",          "expected_firings": []},
+
+    {"chain_id": "FL+DP__H1_default",               "expected_firings": ["COMP-GRADINV-001", "COMP-SECAGG-001"]},
+    {"chain_id": "FL+DP__H2_gradinv_eps6",          "expected_firings": ["COMP-GRADINV-001", "COMP-SECAGG-001"]},
+    {"chain_id": "FL+DP__H3_juris_unmechanised",    "expected_firings": ["COMP-GRADINV-001", "COMP-JURIS-001", "COMP-SECAGG-001"]},
+    {"chain_id": "FL+DP__H4_well_configured",       "expected_firings": []},
+
+    {"chain_id": "FL+TEE+DP__H1_default",           "expected_firings": ["COMP-GRADINV-001", "COMP-SECAGG-001", "COMP-TEEMPC-001"]},
+    {"chain_id": "FL+TEE+DP__H2_gradinv_eps6",      "expected_firings": ["COMP-GRADINV-001", "COMP-SECAGG-001", "COMP-TEEMPC-001"]},
+    {"chain_id": "FL+TEE+DP__H3_juris_unmechanised","expected_firings": ["COMP-GRADINV-001", "COMP-JURIS-001", "COMP-SECAGG-001", "COMP-TEEMPC-001"]},
+    {"chain_id": "FL+TEE+DP__H4_well_configured",   "expected_firings": []},
+
+    {"chain_id": "FL+MPC+DP__H1_default",           "expected_firings": []},
+    {"chain_id": "FL+MPC+DP__H2_gradinv_eps6",      "expected_firings": []},
+    {"chain_id": "FL+MPC+DP__H3_juris_unmechanised","expected_firings": ["COMP-JURIS-001"]},
+    {"chain_id": "FL+MPC+DP__H4_well_configured",   "expected_firings": []}
+  ]
+}
