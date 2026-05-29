@@ -25,15 +25,15 @@ flowchart LR
         SURVEY --> YAPS
     end
 
-    subgraph PAPER["FLTA 2026 short paper"]
-        DRAFT["paper/draft.md"]
+    subgraph PAPER["FLTA 2026 short paper (released separately)"]
+        DRAFT["manuscript + figures"]
     end
 
     subgraph THIS["stepwise-privacy-cards (THIS REPO) — FL-only"]
         direction TB
-        HARNESS["flta_eval/<br/>datasets · fl · attacks · pods · rules · chains · audit"]
+        HARNESS["flta_eval/<br/>datasets · fl · fl_torch · attacks · pods · rules · chains · audit"]
         CARD["card/example_chain.json + battery_expected.json<br/>(valid against yaps/schemas/privacy_card.schema.json v1.2)"]
-        NB["notebooks/<br/>SQ-1, SQ-2, SQ-3, SQ-5"]
+        NB["notebooks/<br/>SQ-1a/b/c/d, SQ-2, SQ-3, SQ-5"]
         RESULTS["results/<br/>audit-trailed result records"]
         SOLID["solid_deploy/<br/>docker-compose CSS + populate.py"]
         HARNESS --> CARD
