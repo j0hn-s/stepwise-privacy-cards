@@ -200,20 +200,33 @@ def _lira_tpr(in_logits: np.ndarray, out_logits: np.ndarray, fpr: float) -> floa
 def _bootstrap_tpr_ci(
     in_arr: np.ndarray, out_arr: np.ndarray, fpr: float,
     *, n_bootstrap: int, rng: np.random.Generator,
-    log_transform: bool = True,
+    transform: Literal["logit", "log", "none"] = "logit",
 ) -> tuple[float, float, float]:
     """Bootstrap CI on per-target TPR. Returns (point_estimate, ci_lower, ci_upper).
 
     Per Carlini et al. (IEEE S&P 2022) §3.3: resample the shadow IN and OUT
     signals (with replacement), refit the per-target Gaussian, recompute
     the closed-form TPR. CI is percentiles of the bootstrap distribution.
-    Uses log-transform of confidences (matches the LiRA logit transform);
-    set log_transform=False if the inputs are already log-transformed.
+
+    Transform options
+    -----------------
+    "logit" — log(x / (1 - x)); the LiRA convention for confidence
+              probabilities x ∈ (0, 1) [Carlini §4]. Inputs are clipped
+              to [eps, 1-eps] for numerical stability.
+    "log"   — natural log of the input; the correct choice for
+              likelihood-ratio scores (RMIA-style; Zarifzadeh §3) which
+              are strictly positive and not confined to [0, 1]. Inputs
+              are clipped at eps from below only.
+    "none"  — pass inputs through as-is; assumes the caller has already
+              applied an appropriate transform.
     """
     eps = 1e-7
-    if log_transform:
+    if transform == "logit":
         in_logits = np.log(in_arr.clip(eps, 1 - eps) / (1 - in_arr).clip(eps, 1 - eps))
         out_logits = np.log(out_arr.clip(eps, 1 - eps) / (1 - out_arr).clip(eps, 1 - eps))
+    elif transform == "log":
+        in_logits = np.log(np.maximum(in_arr, eps))
+        out_logits = np.log(np.maximum(out_arr, eps))
     else:
         in_logits, out_logits = in_arr, out_arr
 
@@ -348,7 +361,7 @@ def per_record_mia(
         if meta_classifier == "lira":
             tpr_estimate, ci_lo, ci_hi = _bootstrap_tpr_ci(
                 in_arr, out_arr, fpr_lowest,
-                n_bootstrap=n_bootstrap, rng=boot_rng, log_transform=True,
+                n_bootstrap=n_bootstrap, rng=boot_rng, transform="logit",
             )
             out_logits = np.log(out_arr.clip(eps, 1 - eps) /
                                 (1 - out_arr).clip(eps, 1 - eps))
@@ -357,26 +370,26 @@ def per_record_mia(
             rsig = max(min(released_signal, 1 - eps), eps)
             released_hit = int(np.log(rsig / (1 - rsig)) >= thr)
         elif meta_classifier == "rmia":
-            # RMIA-offline (Zarifzadeh et al. ICML 2024): the per-target
-            # score is the released-model confidence divided by the
-            # released-model confidence on reference samples for the same
-            # label. The shadow IN/OUT distribution of the same ratio is
-            # used to threshold. Empirically tighter at small shadow
-            # budgets than LiRA.
+            # Simplified RMIA-style scoring [Zarifzadeh et al. ICML 2024]:
+            # the per-target score is the (released-model OR shadow-model)
+            # confidence divided by the released-model confidence on
+            # reference samples of the same label — i.e. a likelihood ratio
+            # against the per-label reference baseline. LR scores are
+            # strictly positive but not confined to [0, 1], so we apply
+            # the log (not logit) transform when fitting the per-target
+            # Gaussian on IN / OUT ratios.
             ref_baseline = float(released_ref_probs[:, y_target].mean() + eps)
             in_ratio = in_arr / ref_baseline
             out_ratio = out_arr / ref_baseline
             tpr_estimate, ci_lo, ci_hi = _bootstrap_tpr_ci(
                 in_ratio, out_ratio, fpr_lowest,
-                n_bootstrap=n_bootstrap, rng=boot_rng, log_transform=True,
+                n_bootstrap=n_bootstrap, rng=boot_rng, transform="log",
             )
-            out_logits = np.log(out_ratio.clip(eps, 1 - eps) /
-                                (1 - out_ratio).clip(eps, 1 - eps))
-            thr = float(out_logits.mean() + (out_logits.std() + 1e-9) *
+            out_log = np.log(np.maximum(out_ratio, eps))
+            thr = float(out_log.mean() + (out_log.std() + 1e-9) *
                         _norm.ppf(1.0 - fpr_lowest))
             released_ratio = released_signal / ref_baseline
-            rs = max(min(released_ratio, 1 - eps), eps)
-            released_hit = int(np.log(rs / (1 - rs)) >= thr)
+            released_hit = int(np.log(max(released_ratio, eps)) >= thr)
         else:
             # "logistic" baseline — empirical OUT-quantile threshold + bootstrap CI.
             thr = float(np.quantile(out_arr, 1 - fpr_lowest))
@@ -581,7 +594,7 @@ def per_record_mia_pool(
         if meta_classifier == "lira":
             tpr_estimate, ci_lo, ci_hi = _bootstrap_tpr_ci(
                 in_arr, out_arr, fpr_lowest,
-                n_bootstrap=n_bootstrap, rng=boot_rng, log_transform=True,
+                n_bootstrap=n_bootstrap, rng=boot_rng, transform="logit",
             )
             out_logits = np.log(out_arr.clip(eps, 1 - eps) /
                                 (1 - out_arr).clip(eps, 1 - eps))
@@ -590,21 +603,26 @@ def per_record_mia_pool(
             rsig = max(min(released_signal, 1 - eps), eps)
             released_hit = int(np.log(rsig / (1 - rsig)) >= thr)
         elif meta_classifier == "rmia":
-            # RMIA-online (Zarifzadeh §3): per-target score = signal / OUT-mean.
+            # RMIA-style scoring [Zarifzadeh §3]: per-target score is the
+            # confidence divided by the OUT-shadow mean — a likelihood
+            # ratio against the per-target reference baseline. LR scores
+            # are strictly positive (not confined to [0, 1]); the natural
+            # transform when fitting the per-target Gaussian is therefore
+            # the natural log, not the logit. (This is the corrected
+            # transform; the prior version logit-transformed the LR and
+            # introduced clip artefacts.)
             out_mean = float(out_arr.mean()) + eps
             in_score = in_arr / out_mean
             out_score = out_arr / out_mean
             tpr_estimate, ci_lo, ci_hi = _bootstrap_tpr_ci(
                 in_score, out_score, fpr_lowest,
-                n_bootstrap=n_bootstrap, rng=boot_rng, log_transform=True,
+                n_bootstrap=n_bootstrap, rng=boot_rng, transform="log",
             )
-            out_score_logits = np.log(out_score.clip(eps, 1 - eps) /
-                                      (1 - out_score).clip(eps, 1 - eps))
-            thr = float(out_score_logits.mean() + (out_score_logits.std() + 1e-9) *
+            out_score_log = np.log(np.maximum(out_score, eps))
+            thr = float(out_score_log.mean() + (out_score_log.std() + 1e-9) *
                         _norm.ppf(1.0 - fpr_lowest))
             released_score = released_signal / out_mean
-            rs = max(min(released_score, 1 - eps), eps)
-            released_hit = int(np.log(rs / (1 - rs)) >= thr)
+            released_hit = int(np.log(max(released_score, eps)) >= thr)
         else:
             thr = float(np.quantile(out_arr, 1 - fpr_lowest))
             tpr_estimate = float((in_arr >= thr).mean())
